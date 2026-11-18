@@ -58,83 +58,17 @@ Bot landscapes evolve rapidly. This policy requires regular review and updating 
 
 ## 3. Bot Classification and Treatment
 
-### 3.1 Allowed Bots (Whitelist)
+We define a resonable request rate limit and expect all visitors to abide by it. This level should never be triggered by normal human browsing activity.
 
-These bots are explicitly permitted with standard rate limits:
+### 3.3 Blocking
 
-**Search Engines (Public Discoverability)**
-- Googlebot (Google Search)
-- Bingbot (Microsoft Bing)
-- DuckDuckBot (DuckDuckGo)
-- Baiduspider (Baidu - for international audience)
-- Yandex (for international audience)
+We use modern tools that are trained on bot behavior across the network and dynamically apply blocks when bots display bad behavior. 
 
-**Social Media Preview Bots**
-- facebookexternalhit (Facebook link previews)
-- Twitterbot (Twitter/X card previews)
-- LinkedInBot (LinkedIn previews)
-- Slackbot (Slack link unfurling)
+Examples of bad behavior that will trigger automated blocking action includes:
 
-**Archival and Preservation**
-- ia_archiver (Internet Archive Wayback Machine)
-- Archive-It (partner archival programs)
-
-**Accessibility Testing**
-- Verified accessibility compliance scanners
-- W3C validators
-- Federal accessibility testing tools
-
-**Monitoring and Uptime**
-- Pingdom
-- UptimeRobot
-- StatusCake
-- Government monitoring services (verified IPs)
-
-**Verification Required:** Bots claiming these identities must pass reverse DNS verification. Unverified bots claiming these identities will be blocked.
-
-### 3.2 Rate-Limited Bots
-
-These bots are allowed but with restricted crawl rates:
-
-**AI Training Crawlers**
-- GPTBot (OpenAI) - 1 request per 10 seconds
-- Google-Extended (Google AI training) - 1 request per 10 seconds
-- CCBot (Common Crawl) - 1 request per 10 seconds
-- Claude-Web (Anthropic) - 1 request per 10 seconds
-- Omgilibot - 1 request per 10 seconds
-- Bytespider (ByteDance/TikTok) - 1 request per 10 seconds
-
-**Rationale:** While we support open access to public information, AI training crawlers can generate significant server load. Rate limiting balances access with operational needs.
-
-**RSS/Feed Readers**
-- Standard feed readers - 1 request per 5 minutes per feed
-
-### 3.3 Blocked Bots (Blacklist)
-
-The following are prohibited from accessing our site:
-
-**Known Malicious Categories**
-- Scrapers designed to harvest email addresses
-- Vulnerability scanners and security testing tools (except authorized security assessments)
-- Content copying/scraping for republication without attribution
-- Automated form submission tools
-- Credential stuffing tools
-- DDoS tools and botnets
-
-**Specific User-Agents** (examples, not exhaustive)
-- Aggressive scrapers: AhrefsBot (excessive crawling), SemrushBot (excessive)
-- Attack tools: sqlmap, nikto, nmap, ZmEu, masscan
-- Generic scrapers: HTTrack, wget, curl (when used without proper identification)
-
-**Behavioral Blocks**
-- User-agents claiming to be browsers but lacking browser headers
-- Empty or missing user-agent strings
-- Requests exceeding 100 pages/minute from single IP
-- Requests with suspicious patterns (form spam, injection attempts)
-
-### 3.4 Special Access
-
-Legitimate researchers, journalists, or partners requiring elevated access may request exceptions through the process outlined in Section 7.
+- Exceeding request rate limits 
+- port scanning or intrusion like behavior not part of normal browsing
+- Requests exceeding 1000 pages over 3 minute from single requestor
 
 ---
 
@@ -146,9 +80,6 @@ Primary bot guidance is published at [agency].gov/robots.txt
 
 **Current Configuration Highlights:**
 - Allows major search engines to all public content
-- Disallows AI training bots from crawling (except with rate limits via Crawl-delay)
-- Blocks all bots from: /admin/, /login/, /search/, /forms/, /api/ (except authenticated)
-- Specifies crawl-delay for rate-limited bots
 
 **Note:** robots.txt is advisory only. Enforcement occurs at additional layers.
 
@@ -157,7 +88,6 @@ Primary bot guidance is published at [agency].gov/robots.txt
 **Provider:** [Cloudflare / AWS WAF / Akamai / Other]
 
 **Active Rules:**
-1. **Bot Detection:** Challenge requests with bot-like behavior patterns
 2. **Rate Limiting:** Enforce per-IP and per-user-agent rate limits
 3. **Known Threat Blocking:** Block IPs from threat intelligence feeds
 4. **Geographic Analysis:** Flag unusual geographic patterns (optional)
@@ -173,14 +103,6 @@ Primary bot guidance is published at [agency].gov/robots.txt
 **Server-Level Rules:**
 - Block requests with empty user-agents
 - Block known malicious user-agent strings
-- Verify claimed identities for whitelisted bots
-
-**Verification Process:**
-For bots claiming to be Googlebot, Bingbot, etc.:
-1. Perform reverse DNS lookup on source IP
-2. Verify hostname matches official crawler domains
-3. Perform forward DNS to confirm IP match
-4. Block if verification fails
 
 ### 4.4 IP Reputation Services
 
@@ -197,19 +119,7 @@ For bots claiming to be Googlebot, Bingbot, etc.:
 
 ### 4.5 Rate Limiting
 
-**Global Rate Limits (per IP address):**
-- Public pages: 60 requests/minute
-- Search functionality: 10 requests/minute
-- API endpoints: Per authentication token limits
-
-**Bot-Specific Limits:**
-- Whitelisted search engines: 1 request/second
-- AI training crawlers: 1 request/10 seconds
-- Unidentified bots: 10 requests/minute, then challenge
-
-**Exemptions:**
-- Whitelisted IPs (internal monitoring, partners)
-- Authenticated API users (per token limits apply)
+We don't want to limit the ability of beneficial crawlers from keeping up to date. Bots that consistently run above 1000 requests over 3 minutes may be blocked at the WAF layer. We don't rely on the robots.txt file to control bot request frequency.
 
 ### 4.6 Protected Endpoints
 
@@ -219,11 +129,7 @@ For bots claiming to be Googlebot, Bingbot, etc.:
 - /forms/submit - Form submission endpoints
 - /search/* - Search functionality (prevents search hammering)
 - /*.pdf/download?email=* - Prevents email harvesting
-
-**Authenticated Access Only:**
 - /api/* - All API endpoints require valid tokens
-- /internal/* - Internal tools
-- /staff/* - Staff resources
 
 ---
 
@@ -262,16 +168,6 @@ The web operations team monitors:
 3. Test rule in monitoring mode (1 week)
 4. Deploy to production if effective
 5. Document in change log
-
-### 5.3 Performance Baselines
-
-**Acceptable Performance Targets:**
-- Bot traffic should not exceed 40% of total requests
-- Legitimate user page load time: <2 seconds (95th percentile)
-- False positive rate: <0.1% of legitimate traffic
-- Search engine indexing: Complete site crawl within 7 days
-
-**Escalation:** If bot traffic impacts user experience, implement emergency restrictions per incident response plan.
 
 ---
 
@@ -423,7 +319,6 @@ Blocked parties may appeal to [botappeals@agency.gov]:
 ### 10.2 Update Triggers
 
 Policy should be reviewed when:
-- New bot categories emerge (e.g., new AI crawlers)
 - Significant security incidents occur
 - Changes to legal/regulatory requirements
 - Major website infrastructure changes
@@ -521,41 +416,6 @@ Disallow: /
 
 # Sitemap
 Sitemap: https://[agency].gov/sitemap.xml
-```
-
----
-
-## Appendix B: Verification Scripts
-
-### Google Bot Verification (Python Example)
-
-```python
-import socket
-
-def verify_googlebot(ip_address):
-    """Verify if IP actually belongs to Googlebot"""
-    try:
-        # Reverse DNS lookup
-        hostname = socket.gethostbyaddr(ip_address)[0]
-        
-        # Check if hostname ends with googlebot.com
-        if not hostname.endswith('.googlebot.com') and not hostname.endswith('.google.com'):
-            return False
-        
-        # Forward DNS lookup to verify IP matches
-        forward_ip = socket.gethostbyname(hostname)
-        
-        return forward_ip == ip_address
-    except:
-        return False
-
-# Usage
-if verify_googlebot(request_ip):
-    # Allow access
-    pass
-else:
-    # Block or challenge
-    pass
 ```
 
 ---
